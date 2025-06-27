@@ -30,6 +30,9 @@ public class SecurityConfig {
 		security.authorizeHttpRequests(config -> config.requestMatchers(WHITE_LIST).permitAll()
 				.requestMatchers("/api/**").hasAnyAuthority("USER").anyRequest().authenticated()
 
+
+					       // .requestMatchers(HttpMethod.PUT/POST/DELETE, "/leave").hasAnyAuthority("ADMIN", "USER" or both);
+
 		);
 		return security.build();
 
