@@ -1,64 +1,70 @@
 package com.bezkoder.springjwt.security.jwt;
 
-import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
-import com.bezkoder.springjwt.security.services.UserDetailsImpl;
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 
 @Component
+@SuppressWarnings("deprecation")
 public class JwtUtils {
-  private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-  @Value("${bezkoder.app.jwtSecret}")
-  private String jwtSecret;
+	@Autowired
+	UserDetailsService userDetailsService;
 
-  @Value("${bezkoder.app.jwtExpirationMs}")
-  private int jwtExpirationMs;
+	private static final String SECRET = "ThisIsSecretThisIsSecretThisIsSecretThisIsSecret";
 
-  public String generateJwtToken(Authentication authentication) {
+	private static final long EXPIRY = 24 * 60 * 60 * 1000l;
 
-    UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
+	
+	
+	
+	//remove build if older versions of spring and java
+	public Claims extractAllClaims(String token) {
+		return Jwts.parser().setSigningKey(SECRET).build().parseClaimsJws(token).getBody();
+	}
 
-    return Jwts.builder()
-        .setSubject((userPrincipal.getUsername()))
-        .setIssuedAt(new Date())
-        .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
-        .signWith(key(), SignatureAlgorithm.HS256)
-        .compact();
-  }
-  
-  private Key key() {
-    return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
-  }
+	public String extractUserName(String token) {
+		Claims claims = extractAllClaims(token);
+		return claims.getSubject();
+	}
 
-  public String getUserNameFromJwtToken(String token) {
-    return Jwts.parserBuilder().setSigningKey(key()).build()
-               .parseClaimsJws(token).getBody().getSubject();
-  }
+	public Date extractExpiry(String token) {
+		Claims claims = extractAllClaims(token);
+		return claims.getExpiration();
+	}
 
-  public boolean validateJwtToken(String authToken) {
-    try {
-      Jwts.parserBuilder().setSigningKey(key()).build().parse(authToken);
-      return true;
-    } catch (MalformedJwtException e) {
-      logger.error("Invalid JWT token: {}", e.getMessage());
-    } catch (ExpiredJwtException e) {
-      logger.error("JWT token is expired: {}", e.getMessage());
-    } catch (UnsupportedJwtException e) {
-      logger.error("JWT token is unsupported: {}", e.getMessage());
-    } catch (IllegalArgumentException e) {
-      logger.error("JWT claims string is empty: {}", e.getMessage());
-    }
+	public String generateToken(UserDetails user) {
+		return Jwts.builder().signWith(SignatureAlgorithm.HS256, SECRET).addClaims(new HashMap<>())
+				.setSubject(user.getUsername()).setIssuedAt(new Date(System.currentTimeMillis()))
+				.setExpiration(new Date(System.currentTimeMillis() + EXPIRY)).compact();
 
-    return false;
-  }
+	}
+
+	public boolean validateToken(String token, UserDetails user) {
+		String nameString = extractUserName(token);
+		Date expiryDate = extractExpiry(token);
+
+		return (nameString.equalsIgnoreCase(user.getUsername())
+				&& expiryDate.after(new Date(System.currentTimeMillis())));
+	}
+
+//	public static void main(String args[]) {
+//		UserDetails userDetails = new User("Nachiket","abcd", Set.of(new SimpleGrantedAuthority("ADMIN")));
+//		JwtUtils jwtUtils = new JwtUtils();
+//		String tokenString = jwtUtils.generateToken(userDetails);
+//		System.out.println("token is " + tokenString);
+//		System.out.println("user is " + jwtUtils.extractUserName(tokenString));
+//		System.out.println("expiry is " + jwtUtils.extractExpiry(tokenString));
+//		System.out.println("validity  " + jwtUtils.validateToken(tokenString,userDetails));
+//
+//	}
+
 }
