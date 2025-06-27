@@ -27,7 +27,8 @@ public class SecurityConfig {
 		security.sessionManagement(config -> config.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 		security.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
 		security.authenticationProvider(authenticationProvider);
-		security.authorizeHttpRequests(config -> config.requestMatchers(WHITE_LIST)
+		security.authorizeHttpRequests(config -> config.requestMatchers(WHITE_LIST).permitAll()
+				.requestMatchers("/api/**").hasAnyAuthority("USER").anyRequest().authenticated()
 
 		);
 		return security.build();

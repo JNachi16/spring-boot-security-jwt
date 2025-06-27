@@ -10,9 +10,12 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,10 +40,10 @@ import com.bezkoder.springjwt.security.services.UserDetailsImpl;
 @RequestMapping("/api/auth")
 public class AuthController {
   @Autowired
-  AuthenticationManager authenticationManager;
+  AuthenticationProvider authenticationProvider;
 
   @Autowired
-  UserRepository userRepository;
+  UserDetailsService service;
 
   @Autowired
   RoleRepository roleRepository;
@@ -54,11 +57,12 @@ public class AuthController {
   @PostMapping("/login")
   public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
-    Authentication authentication = authenticationManager.authenticate(
+	  UserDetails details = service.loadUserByUsername(loginRequest.getUsername());
+    Authentication authentication = authenticationProvider.authenticate(
         new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
-    String jwt = jwtUtils.generateToken(authentication);
+    String jwt = jwtUtils.generateToken(details);
     
     UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();    
     List<String> roles = userDetails.getAuthorities().stream()
